@@ -2,46 +2,61 @@ import sys
 import csv
 from web3 import Web3, HTTPProvider, IPCProvider
 #change to ipc for mainnet
-web3 = Web3(HTTPProvider('http://127.0.0.1:8545'))
+w3 = Web3(HTTPProvider('http://127.0.0.1:8545'))
 from solc import compile_source
 from web3.contract import ConciseContract
 
-contractAddress = '0x73f46e31f80bbd5fd43cc5c1350c09db3fa98a13'
-myAddress = '0xdc9d7f1b0cfd80eb033a3935a1a23687fd36a960'
-myPrivateKey = '0x1fc3b872b45db18c5a78ab883dbcc457d14092e064149d6753e9fd2697940424'
-mnemonic = 'concert biology gaze electric wife control into unveil tomorrow decade exhibit near'
-#toAddress = '0x850d5c22a64d6f835850870fab8bc0d3cafa1036'
-#to be iterated from csv
+myAddress = Web3.toChecksumAddress('3a20ca9b5cb5336325313442d5c10b2d4ae3229b')
+contractAddress = Web3.toChecksumAddress('314635509ec21a4369bb91eeb096a611649536ef')
+keyStore = '/Users/robertrahardja/Documents/Programming/gethTestnetTest/keystore/UTC--2018-07-12T06-36-52.531756834Z--3a20ca9b5cb5336325313442d5c10b2d4ae3229b'
+
+toAddress = Web3.toChecksumAddress('096c9164def69f4f9e9fdf24be4b205c3a8f3d45')
 
 #get abi text
 f = open('abi.txt', 'r')
 abiText = f.read()
 f.close
+#instantiate contract
+contract = w3.eth.contract(address = contractAddress, abi = abiText)
 
-#create contract
-contract = web3.eth.contract(address = contractAddress, abi = abiText)
+#Test call of balance
+ownerBalance = contract.call().balanceOf(myAddress)
+print("To test testnet call: \nThe token balance of the sender is " + str(ownerBalance))
 
-#loop over csvTest file
-with open('csvTest') as csvfile:
-    reader = csv.reader(csvfile, delimiter=',')
 
-    for row in reader:
-        #get nonce
-        nonce = web3.eth.getTransactionCount(myAddress)
-        #make transaction instance
-        txn_dict = contract.functions.transfer(row[0],row[1]).buildTransaction({
-            'chainId': 3,
-            'gas': 140000,
-            'gasPrice': w3.toWei('40', 'gwei'),
-            'nonce': nonce,
-        })
+#get private key
+with open(keyStore) as keyfile:
+    encrypted_key = keyfile.read()
+    pk = w3.eth.account.decrypt(encrypted_key, 'password')
+    privateKey = pk.hex()
+    # tip: do not save the key or password anywhere, especially into a shared source file
+print("Owner private key is " + str(privateKey))
 
-        #sign transaction
-        signed_txn = w3.eth.account.signTransaction(txn_dict, private_key=myPrivateKey)
-        #send transaction
-        result = w3.eth.sendRawTransaction(signed_txn.rawTransaction)
 
-        #get transaction receipt
-        tx_receipt = w3.eth.getTransactionReceipt(result)
-        #print confirmation of transaction sent
-        print('transfer from ' + tx_receipt.from + ' to ' + tx_receipt.to + ' with transaction hash of ' + tx_receipt.transactionHash + ' is done.\n')
+ #get nonce
+nonce = w3.eth.getTransactionCount(myAddress)
+print("Owner's nonce is "  + str(nonce))
+
+ #make transaction instance
+txn_dict = contract.functions.transfer(toAddress,1).buildTransaction({
+    'from': myAddress,
+    'chainId': 15,
+    'gas': 140000,
+    'gasPrice': w3.toWei('40', 'gwei'),
+    'nonce': nonce,
+})
+
+#sign transaction
+signed_txn = w3.eth.account.signTransaction(txn_dict, private_key=privateKey)
+
+#send transaction
+result = w3.eth.sendRawTransaction(signed_txn.rawTransaction)
+print("result is " + str(result.hex()))
+#get transaction receipt
+tx_receipt = w3.eth.getTransactionReceipt(result)
+
+print("The transaction receipt is " + str(tx_receipt))
+myNowBalance = contract.call().balanceOf(myAddress)
+print("Now the balance of " + str(myAddress) + " is " + str(myNowBalance))
+toNowBalance = contract.call().balanceOf(toAddress)
+print("Now the balance of " + str(toAddress) + " is " + str(toNowBalance))
