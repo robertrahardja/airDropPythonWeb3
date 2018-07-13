@@ -71,5 +71,7 @@ with open('csvTest') as csvfile:
 
             print("The transaction receipt is " + str(txRcp))
             print(str(tokenToSend) + " token sent to " + str(toAddress))
-            cnonce +=1 
+            
+            cnonce = w3.eth.getTransactionCount(myAddress)
+            #cnonce +=1 
             
